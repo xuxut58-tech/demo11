@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>越南冻榴莲肉工厂 · 盈亏平衡、总库存与销售出库系统</title>
+  <style>
+    :root {
+      --primary: #d97706;
+      --primary-dark: #b45309;
+      --primary-light: #fef3c7;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #059669;
+      --success-bg: #ecfdf5;
+      --danger: #dc2626;
+      --danger-bg: #fef2f2;
+      --info: #2563eb;
+      --info-bg: #eff6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+    }
+    .container { max-width: 1520px; margin: 0 auto; }
+
+    header {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    header h1 { font-size: 1.22rem; display: flex; align-items: center; gap: 8px; }
+    .subtitle { font-size: 0.81rem; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.81rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    button:hover { background: #f8fafc; }
+    button.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    button.btn-primary:hover { background: var(--primary-dark); }
+    button.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+    button.btn-success:hover { opacity: 0.92; }
+    button.btn-info { background: var(--info-bg); color: var(--info); border-color: #bfdbfe; }
+    button.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: #fecaca; }
+    button.btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+
+    /* 生产周期切换栏 */
+    .cycle-bar {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1px solid #fcd34d;
+      border-radius: 12px;
+      padding: 13px 18px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .cycle-selector { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .cycle-selector select {
+      padding: 8px 12px;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      background: #fff;
+      color: #78350f;
+      min-width: 270px;
+    }
+    .progress-area { flex: 1; min-width: 300px; max-width: 660px; }
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.81rem;
+      font-weight: 600;
+      color: #78350f;
+      margin-bottom: 5px;
+    }
+    .progress-track {
+      height: 12px;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid #fcd34d;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f59e0b, #059669);
+      transition: width 0.35s ease;
+    }
+    .progress-sub {
+      font-size: 0.75rem;
+      color: #92400e;
+      margin-top: 5px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* 总库存双栏布局 */
+    .inv-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.45fr;
+      gap: 14px;
+    }
+    @media (max-width: 1050px) {
+      .inv-grid { grid-template-columns: 1fr; }
+    }
+
+    /* 主网格 */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 430px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 1120px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding-bottom: 9px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+    .badge-green { background: var(--success-bg); color: var(--success); }
+    .badge-blue { background: var(--info-bg); color: var(--info); }
+
+    .section-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      margin-bottom: 11px;
+      background: #fafafa;
+    }
+    .section-box.buy-box { border-color: #bfdbfe; background: #f8fbff; }
+    .section-box.prod-box { border-color: #fde68a; background: #fffdf7; }
+    .section-box.sale-box { border-color: #a7f3d0; background: #f4fbf7; }
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.78rem; font-weight: 600; color: #334155; display: flex; justify-content: space-between; }
+    .hint { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+
+    .input-wrap {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .input-wrap:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(217,119,6,0.12);
+    }
+    .input-wrap input, .input-wrap select {
+      border: none;
+      outline: none;
+      padding: 7px 9px;
+      font-size: 0.87rem;
+      width: 100%;
+      background: transparent;
+      color: var(--text);
+    }
+    .unit {
+      background: #f8fafc;
+      color: var(--muted);
+      padding: 0 8px;
+      font-size: 0.74rem;
+      display: flex;
+      align-items: center;
+      border-left: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    .inline-select {
+      border-left: 1px solid #e2e8f0 !important;
+      background: #f8fafc !important;
+      width: auto !important;
+      font-size: 0.74rem !important;
+      color: #475569 !important;
+      cursor: pointer;
+    }
+
+    .daily-grades-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .daily-live-bar {
+      background: #fff;
+      border: 1px dashed #f59e0b;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      font-size: 0.81rem;
+    }
+    .filter-inputs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .filter-inputs input[type="date"] {
+      padding: 5px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 820px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .kpi-card .k { font-size: 0.74rem; color: var(--muted); }
+    .kpi-card .v { font-size: 1.08rem; font-weight: 700; color: var(--text); margin-top: 2px; word-break: break-all; }
+    .kpi-card .s { font-size: 0.72rem; color: #475569; margin-top: 2px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { border: 1px solid var(--border); padding: 6px 6px; text-align: center; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; white-space: nowrap; }
+    tbody tr:hover { background: #fcfcfd; }
+
+    .inline-edit-input {
+      width: 100%;
+      min-width: 55px;
+      padding: 4px 5px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .inline-edit-input.left { text-align: left; min-width: 90px; }
+
+    .mode-tabs {
+      display: flex;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 8px;
+      gap: 4px;
+    }
+    .mode-tab {
+      border: none;
+      background: transparent;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      border-radius: 6px;
+      color: var(--muted);
+    }
+    .mode-tab.active {
+      background: #fff;
+      color: var(--primary-dark);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    .info-box {
+      background: var(--info-bg);
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      margin-top: 10px;
+    }
+    .carry-banner {
+      background: #fefce8;
+      border: 1px solid #fde047;
+      color: #854d0e;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 99px;
+      font-size: 0.71rem;
+      font-weight: 600;
+    }
+    .pill-monthong { background: #fef3c7; color: #92400e; }
+    .pill-ri6 { background: #dcfce7; color: #166534; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.45);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      padding: 16px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 440px;
+      width: 100%;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+    }
+    .modal h3 { font-size: 1.05rem; margin-bottom: 12px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .main-grid, .inv-grid { grid-template-columns: 1fr; }
+      .card { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>🇻🇳 越南冻榴莲肉工厂 · 同品类27吨柜循环结转、总库存与销售出库系统</h1>
+      <div class="subtitle">金枕与干尧独立按 27,000kg (1,350件) 循环结转 · 全厂鲜果与冻肉实时总库存 · 销售出库利润核算</div>
+    </div>
+    <div class="header-actions no-print">
+      <button class="btn-success" onclick="exportInventoryCSV()">📦 导出总库存CSV</button>
+      <button class="btn-success" onclick="exportProductionCSV()">📥 导出生产台账CSV</button>
+      <button class="btn-success" onclick="exportSalesCSV()">📤 导出出库表CSV</button>
+      <button onclick="exportBackupJSON()">💾 备份数据</button>
+      <button onclick="triggerImportJSON()">📂 恢复备份</button>
+      <input type="file" id="importJsonInput" accept=".json" style="display:none" />
+      <button class="btn-danger" onclick="clearToBlank()">🗑 清空示例重新记账</button>
+      <button class="btn-primary" onclick="window.print()">🖨 打印报表</button>
+    </div>
+  </header>
+
+  <!-- 全厂实时总库存表 -->
+  <div class="card" style="border-color:#93c5fd;">
+    <div class="card-title">
+      <span>🏭 全厂实时总库存表（跨柜汇总 · 鲜果结余 + 冷库冻榴莲肉库存）</span>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="badge badge-blue" id="invTotalSummaryBadge">成品结存：0 件 (0 kg)</span>
+        <button class="btn-sm no-print" id="toggleInvBtn" onclick="toggleInventoryCard()">收起总库存</button>
+      </div>
+    </div>
+
+    <div id="inventoryBodyArea" class="inv-grid">
+      <!-- 左：鲜果原料总库存 -->
+      <div>
+        <div style="font-size:0.82rem; font-weight:700; color:#1e40af; margin-bottom:6px;">① 原料鲜果总库存（按品类汇总）</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>鲜果品类</th>
+                <th>累计采购</th>
+                <th>累计投料</th>
+                <th>鲜果结余</th>
+                <th>采购均价</th>
+                <th>结余货值</th>
+              </tr>
+            </thead>
+            <tbody id="rawInvBody"></tbody>
+            <tfoot id="rawInvFoot" style="font-weight:700; background:#f8fbff;"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 右：冻榴莲肉成品总库存 -->
+      <div>
+        <div style="font-size:0.82rem; font-weight:700; color:#065f46; margin-bottom:6px;">② 冻榴莲肉成品总库存（按品类 · 20kg/件）</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>冻肉品类</th>
+                <th>累计新产</th>
+                <th>累计出库</th>
+                <th>当前冷库库存</th>
+                <th>所在柜次分布</th>
+                <th>库存均价 (/kg·/件)</th>
+                <th>库存总货值</th>
+              </tr>
+            </thead>
+            <tbody id="pulpInvBody"></tbody>
+            <tfoot id="pulpInvFoot" style="font-weight:700; background:#ecfdf5;"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生产周期 / 柜次进度条 (27,000kg = 1,350件) -->
+  <div class="cycle-bar">
+    <div class="cycle-selector">
+      <span style="font-weight:700; color:#78350f;">📦 当前操作柜次：</span>
+      <select id="cycleSelect" onchange="switchCycle(this.value)"></select>
+      <button class="btn-primary btn-sm no-print" onclick="openNewCycleModal()">+ 新建一柜</button>
+      <button class="btn-sm btn-danger no-print" onclick="deleteCurrentCycle()">删除此柜</button>
+    </div>
+
+    <div class="progress-area">
+      <div class="progress-top">
+        <span id="cycleProgressTitle">本柜进度 (同品类满 27,000 kg / 1,350 件自动结转)</span>
+        <span id="cycleProgressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="cycleProgressFill" style="width:0%"></div>
+      </div>
+      <div class="progress-sub">
+        <span id="cycleProducedText">本柜可用总肉：0 件</span>
+        <span id="cycleShippedText">本柜已出库：0 件</span>
+        <span id="cycleRawStockText">鲜果库存结余：0 kg</span>
+        <span id="cycleCarryOutText">转入同品类下柜：0 件</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- 左侧：每日采购生产录入 + 销售出库录入 + 工厂参数 -->
+    <div>
+      <!-- 1. 每日采购与生产录入表单 -->
+      <div class="card no-print" style="border-color:#f59e0b;">
+        <div class="card-title">
+          <span id="formTitle">✍️ 每日采购与生产流水登记</span>
+          <span class="badge" id="formVarietyBadge">当前：金枕柜</span>
+        </div>
+
+        <input type="hidden" id="editingRecordId" value="" />
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="form-group">
+            <label>日期</label>
+            <div class="input-wrap"><input type="date" id="recDate" /></div>
+          </div>
+          <div class="form-group">
+            <label>品类（自动匹配同品类柜次）</label>
+            <div class="input-wrap">
+              <select id="recVariety" onchange="onFormVarietyChange(this.value)">
+                <option value="金枕">金枕 (Monthong)</option>
+                <option value="干尧">干尧 (Ri6)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 采购模块 -->
+        <div class="section-box buy-box">
+          <div class="section-label" style="color:#1e40af;">
+            <span>① 今日原料鲜果采购（入库）</span>
+            <span class="hint">未采购填 0</span>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>采购原料数量</label>
+              <div class="input-wrap">
+                <input type="number" id="recBuyKg" value="8000" step="any" min="0" />
+                <span class="unit">kg</span>
+              </div>
+              <div class="hint" id="recBuyTonsHint">折合 8.00 吨</div>
+            </div>
+            <div class="form-group">
+              <label>采购鲜果单价</label>
+              <div class="input-wrap">
+                <input type="number" id="recBuyUnitPrice" value="90000" step="any" min="0" />
+                <span class="unit" data-curr-unit>₫/kg</span>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>今日采购总金额 <span class="hint" id="recAmountRmbHint"></span></label>
+              <div class="input-wrap">
+                <input type="number" id="recBuyTotalAmt" value="720000000" step="any" min="0" />
+                <span class="unit" data-curr-sym>₫</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 生产模块 -->
+        <div class="section-box prod-box">
+          <div class="section-label" style="color:#92400e;">
+            <span>② 今日车间生产投料与冻肉产出</span>
+            <span class="hint">未开果填 0</span>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>今日生产耗用原料数量 <span class="hint" id="recProdTonsHint">折合 8.00 吨</span></label>
+            <div class="input-wrap">
+              <input type="number" id="recProdRawKg" value="8000" step="any" min="0" />
+              <span class="unit">kg 投料鲜果</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>今日产出各等级冻肉件数 <span class="hint">1件 = 20kg</span></label>
+            <div class="daily-grades-grid" id="dailyGradeInputs"></div>
+          </div>
+          <div class="daily-live-bar" id="dailyLivePreview">
+            <span>今日冻肉总产：<strong>0 件 (0 kg)</strong></span>
+            <span>今日实出肉率：<strong>-</strong></span>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="form-group">
+            <label>当日额外杂费</label>
+            <div class="input-wrap">
+              <input type="number" id="recExtraCost" value="0" step="any" min="0" />
+              <span class="unit" data-curr-sym>₫</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <div class="input-wrap">
+              <input type="text" id="recNote" placeholder="如：果园A批" />
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn-primary" style="flex:1;" id="saveRecordBtn" onclick="saveDailyRecord()">✅ 保存采购与生产记录</button>
+          <button id="cancelEditBtn" style="display:none;" onclick="cancelEditRecord()">取消修改</button>
+        </div>
+      </div>
+
+      <!-- 2. 销售出库录入表单 -->
+      <div class="card no-print" style="border-color:#10b981;">
+        <div class="card-title">
+          <span id="saleFormTitle">🚚 本柜销售出库登记（装柜出货）</span>
+          <span class="badge badge-green">需填出库日期</span>
+        </div>
+
+        <input type="hidden" id="editingSaleId" value="" />
+        <div class="section-box sale-box">
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="form-group">
+              <label>出库日期 <span style="color:var(--danger)">*</span></label>
+              <div class="input-wrap"><input type="date" id="saleDate" /></div>
+            </div>
+            <div class="form-group">
+              <label>货柜号 / 采购客户</label>
+              <div class="input-wrap">
+                <input type="text" id="saleCustomer" placeholder="如：柜号MSKU123 / 张总" />
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:0.78rem; font-weight:700; color:#065f46;">各等级出库件数 (20kg/件) 与销售单价：</span>
+            <button type="button" class="btn-sm btn-info" onclick="fillFullContainerSale()">⚡ 一键按库存填满本柜(1,350件)</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>同品类等级</th>
+                  <th>本柜可出</th>
+                  <th>出库件数</th>
+                  <th>销售单价(/kg)</th>
+                </tr>
+              </thead>
+              <tbody id="saleSkuInputsBody"></tbody>
+            </table>
+          </div>
+
+          <div class="daily-live-bar" style="border-color:#10b981;" id="saleLivePreview">
+            <span>本次出库：<strong>0 件 (0 kg)</strong></span>
+            <span>销售总额：<strong>0</strong></span>
+          </div>
+
+          <label style="margin-top:8px; display:flex; align-items:center; gap:6px; font-weight:500; cursor:pointer;">
+            <input type="checkbox" id="saleCloseCycle" />
+            <span>本柜出货完毕（勾选或出库≥1,350件，剩余自动转入同品类下一柜）</span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>出库备注</label>
+          <div class="input-wrap"><input type="text" id="saleNote" placeholder="如：发往凭祥口岸 / 尾柜清货" /></div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn-success" style="flex:1;" id="saveSaleBtn" onclick="saveSaleRecord()">✅ 保存销售出库单</button>
+          <button id="cancelSaleEditBtn" style="display:none;" onclick="cancelEditSale()">取消修改</button>
+        </div>
+      </div>
+
+      <!-- 3. 工厂币种与加工摊销费用 -->
+      <div class="card">
+        <div class="card-title">
+          <span>⚙️ 工厂记账币种与加工摊销费用</span>
+          <span class="badge badge-blue">计入盈亏平衡</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>工厂记账主币种</label>
+            <div class="input-wrap">
+              <select id="cfgCurrency">
+                <option value="VND" data-sym="₫" selected>越南盾 (VND ₫)</option>
+                <option value="CNY" data-sym="¥">人民币 (CNY ¥)</option>
+                <option value="USD" data-sym="$">美元 (USD $)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>人民币汇率 <span class="hint">1 CNY = ? 主币</span></label>
+            <div class="input-wrap">
+              <input type="number" id="cfgRmbRate" value="3860" step="any" min="0.0001" />
+              <span class="unit" id="cfgRateUnit">1¥ = ?₫</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>剥肉分级包装人工费</label>
+            <div class="input-wrap">
+              <input type="number" id="cfgLabor" value="12000" step="any" min="0" />
+              <select id="cfgLaborMode" class="inline-select">
+                <option value="pulp" selected>₫/kg成品</option>
+                <option value="raw">₫/kg投料</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>包材费 (纸箱/内袋/托盘)</label>
+            <div class="input-wrap">
+              <input type="number" id="cfgPkgPerCarton" value="60000" step="any" min="0" />
+              <span class="unit" data-curr-carton>₫ / 20kg件</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>液氮/速冻电费及冷库费</label>
+            <div class="input-wrap">
+              <input type="number" id="cfgFreezePerKg" value="9000" step="any" min="0" />
+              <span class="unit" data-curr-unit>₫ / kg成品</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>厂房管理/检测检疫摊销</label>
+            <div class="input-wrap">
+              <input type="number" id="cfgOverheadPerKg" value="5500" step="any" min="0" />
+              <span class="unit" data-curr-unit>₫ / kg成品</span>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label>单柜(27吨)物流清关固定费 <span class="hint">出厂保本填0</span></label>
+            <div class="input-wrap">
+              <input type="number" id="cfgLogisticsPerCycle" value="0" step="any" min="0" />
+              <span class="unit" data-curr-cycle>₫ / 27吨柜</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 自定义果肉等级配置 -->
+      <div class="card">
+        <div class="card-title">
+          <span>🏷️ 自定义产品等级与分摊规则</span>
+          <button class="btn-sm" onclick="addGrade()">+ 添加等级</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>等级名称</th>
+                <th>价值权重(%)</th>
+                <th>参考市场价(/kg)</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="gradeConfigBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：本柜盈亏平衡、库存结转、销售出库表 & 每日流水台账 -->
+    <div>
+      <!-- 1. 阶段盈亏平衡与同品类满柜结转看板 -->
+      <div class="card">
+        <div class="card-title">
+          <span id="beCardTitle">📊 本柜盈亏平衡测算 & 同品类满柜结转明细</span>
+          <div class="mode-tabs no-print">
+            <button class="mode-tab active" id="beModeRatio" onclick="setBreakEvenMode('ratio')">按权重比例分摊保本</button>
+            <button class="mode-tab" id="beModeResidual" onclick="setBreakEvenMode('residual')">副级报价抵扣反算主级</button>
+          </div>
+        </div>
+
+        <div id="carryBannerArea"></div>
+
+        <!-- 日期筛选器 -->
+        <div class="filter-bar no-print">
+          <div class="filter-inputs">
+            <strong>生产测算时段：</strong>
+            <input type="date" id="filterStart" onchange="renderDashboard()" />
+            <span>至</span>
+            <input type="date" id="filterEnd" onchange="renderDashboard()" />
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-sm" onclick="setQuickFilter('all')">本柜全部日期</button>
+            <button class="btn-sm" onclick="setQuickFilter(7)">近7天</button>
+            <button class="btn-sm" onclick="setQuickFilter(3)">近3天</button>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" style="background:#f8fbff; border-color:#bfdbfe;">
+            <div class="k" style="color:#1e40af;">时段采购鲜果(入库)</div>
+            <div class="v" id="kpiBuyKg">0 kg</div>
+            <div class="s" id="kpiBuySub">金额 0 · 均价 0/kg</div>
+          </div>
+          <div class="kpi-card" style="background:#fffdf7; border-color:#fde68a;">
+            <div class="k" style="color:#92400e;">时段生产投料原料</div>
+            <div class="v" id="kpiProdRawKg">0 kg</div>
+            <div class="s" id="kpiProdRawSub">耗果成本 0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="k">时段新产冻肉</div>
+            <div class="v" id="kpiOutCartons">0 件</div>
+            <div class="s" id="kpiOutKg">0 kg · 实出肉率 0.0%</div>
+          </div>
+          <div class="kpi-card" style="background:#fffbeb; border-color:#fcd34d;">
+            <div class="k" style="color:#92400e;">本柜综合保本均价</div>
+            <div class="v" id="kpiAvgBE" style="color:#b45309;">0 / kg</div>
+            <div class="s" id="kpiAvgBESub" style="color:#92400e;">¥0.00/kg · 0/件</div>
+          </div>
+        </div>
+
+        <div style="font-size:0.79rem; color:#475569; margin-bottom:12px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid var(--border);" id="periodCostSummary"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>品类 (品种·等级)</th>
+                <th>同品类上柜结转</th>
+                <th>本柜新产</th>
+                <th>本柜已出库</th>
+                <th>余货转同品类下柜</th>
+                <th>盈亏平衡 (/kg)</th>
+                <th>盈亏平衡 (/20kg件)</th>
+                <th>折合RMB (/kg · /件)</th>
+              </tr>
+            </thead>
+            <tbody id="breakEvenTableBody"></tbody>
+          </table>
+        </div>
+        <div class="info-box" id="beExplainBox"></div>
+      </div>
+
+      <!-- 2. 本柜销售出库表 -->
+      <div class="card" style="border-color:#6ee7b7;">
+        <div class="card-title">
+          <span>🚚 本柜销售出库台账表（同品类 27,000kg / 1,350件循环）</span>
+          <span class="badge badge-green" id="saleSummaryBadge">已出库 0 件 · 毛利 0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>出库日期</th>
+                <th>客户 / 货柜</th>
+                <th>出库品类明细 (20kg/件)</th>
+                <th>出库总件数/重量</th>
+                <th>销售总金额</th>
+                <th>对应保本成本</th>
+                <th>本单毛利 (毛利率)</th>
+                <th class="no-print">操作</th>
+              </tr>
+            </thead>
+            <tbody id="salesTableBody"></tbody>
+            <tfoot id="salesTableFoot" style="font-weight:700; background:#ecfdf5;"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. 每日采购与生产流水台账 -->
+      <div class="card">
+        <div class="card-title">
+          <span>📒 本柜每日采购与生产流水台账</span>
+          <span class="hint" id="ledgerCountHint">共 0 条记录</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="ledgerHead"></thead>
+            <tbody id="ledgerBody"></tbody>
+            <tfoot id="ledgerFoot" style="font-weight:700; background:#f8fafc;"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新建生产柜次弹窗 -->
+<div class="modal-backdrop" id="newCycleModal">
+  <div class="modal">
+    <h3>📦 开启新同品类循环柜次 (目标 27,000kg / 1,350件)</h3>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>所属榴莲品类（满柜余货仅转结至同品类下一柜）</label>
+      <div class="input-wrap">
+        <select id="newCycleVariety" onchange="updateNewCycleDefaultName()">
+          <option value="金枕">金枕 (Monthong)</option>
+          <option value="干尧">干尧 (Ri6)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>柜次名称 / 编号</label>
+      <div class="input-wrap">
+        <input type="text" id="newCycleName" placeholder="例如：金枕 · 第3柜" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeNewCycleModal()">取消</button>
+      <button class="btn-primary" onclick="confirmNewCycle()">创建并切换到此柜</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'vn_durian_factory_v4';
+  const CONTAINER_TARGET_KG = 27000;
+  const CARTON_KG = 20;
+  const CONTAINER_TARGET_CARTONS = CONTAINER_TARGET_KG / CARTON_KG; // 1350 件
+  const VARIETIES = ['金枕', '干尧'];
+
+  const $ = id => document.getElementById(id);
+
+  let state = null;
+  let breakEvenMode = 'ratio'; // 'ratio' | 'residual'
+  let computedCycleCache = {};
+  let invExpanded = true;
+
+  function getTodayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function skuKey(variety, gradeId) {
+    return `${variety}__${gradeId}`;
+  }
+
+  function parseSkuKey(key) {
+    const idx = key.indexOf('__');
+    return {
+      variety: key.slice(0, idx),
+      gradeId: key.slice(idx + 2)
+    };
+  }
+
+  function createDefaultState() {
+    const grades = [
+      { id: 'g_a', name: 'A级精品整肉', weightRatio: 100, refPrice: 460000 },
+      { id: 'g_b', name: 'B级标准肉', weightRatio: 75, refPrice: 345000 },
+      { id: 'g_c', name: 'C级碎肉/果泥', weightRatio: 40, refPrice: 185000 }
+    ];
+    return {
+      config: {
+        currency: 'VND',
+        rmbRate: 3860,
+        labor: 12000,
+        laborMode: 'pulp',
+        pkgPerCarton: 60000,
+        freezePerKg: 9000,
+        overheadPerKg: 5500,
+        logisticsPerCycle: 0
+      },
+      grades,
+      activeCycleId: 'cyc_m1',
+      cycles: [
+        {
+          id: 'cyc_m1',
+          name: '金枕 · 第1柜 (满柜示范)',
+          variety: '金枕',
+          closed: true,
+          records: [
+            { id: 'r1', date: '2026-11-16', variety: '金枕', buyRawKg: 25000, buyRawAmt: 2250000000, prodRawKg: 18000, extraCost: 0, note: '首批收购25吨', outputs: { g_a: 180, g_b: 65, g_c: 35 } },
+            { id: 'r2', date: '2026-11-17', variety: '金枕', buyRawKg: 20000, buyRawAmt: 1820000000, prodRawKg: 22000, extraCost: 1500000, note: '加紧生产', outputs: { g_a: 220, g_b: 80, g_c: 40 } },
+            { id: 'r3', date: '2026-11-18', variety: '金枕', buyRawKg: 24000, buyRawAmt: 2184000000, prodRawKg: 25000, extraCost: 0, note: '', outputs: { g_a: 255, g_b: 90, g_c: 45 } },
+            { id: 'r4', date: '2026-11-19', variety: '金枕', buyRawKg: 22000, buyRawAmt: 1980000000, prodRawKg: 25500, extraCost: 0, note: '累计新产1410件', outputs: { g_a: 260, g_b: 95, g_c: 45 } }
+          ],
+          salesRecords: [
+            {
+              id: 's1',
+              date: '2026-11-20',
+              customer: '柜号MSKU-8812 / 凭祥口岸',
+              note: '第1柜出库1350件，余货60件转入金枕第2柜',
+              items: {
+                '金枕__g_a': { cartons: 885, pricePerKg: 465000 },
+                '金枕__g_b': { cartons: 315, pricePerKg: 350000 },
+                '金枕__g_c': { cartons: 150, pricePerKg: 190000 }
+              }
+            }
+          ]
+        },
+        {
+          id: 'cyc_m2',
+          name: '金枕 · 第2柜 (进行中)',
+          variety: '金枕',
+          closed: false,
+          records: [
+            { id: 'r5', date: '2026-11-21', variety: '金枕', buyRawKg: 15000, buyRawAmt: 1365000000, prodRawKg: 10000, extraCost: 0, note: '承接金枕第1柜结转60件 + 新产', outputs: { g_a: 100, g_b: 35, g_c: 18 } }
+          ],
+          salesRecords: []
+        },
+        {
+          id: 'cyc_r1',
+          name: '干尧 · 第1柜 (进行中)',
+          variety: '干尧',
+          closed: false,
+          records: [
+            { id: 'r6', date: '2026-11-21', variety: '干尧', buyRawKg: 12000, buyRawAmt: 804000000, prodRawKg: 9500, extraCost: 0, note: '独立干尧柜次', outputs: { g_a: 76, g_b: 34, g_c: 18 } },
+            { id: 'r7', date: '2026-11-22', variety: '干尧', buyRawKg: 8000, buyRawAmt: 544000000, prodRawKg: 8500, extraCost: 0, note: '', outputs: { g_a: 68, g_b: 30, g_c: 15 } }
+          ],
+          salesRecords: []
+        }
+      ]
+    };
+  }
+
+  function normalizeState(s) {
+    if (!s || !Array.isArray(s.cycles)) return createDefaultState();
+    s.cycles.forEach(c => {
+      c.variety = c.variety || '金枕';
+      c.closed = !!c.closed;
+      c.records = (c.records || []).map(r => ({
+        ...r,
+        variety: r.variety || c.variety,
+        buyRawKg: r.buyRawKg !== undefined ? Number(r.buyRawKg) : (Number(r.rawKg) || 0),
+        buyRawAmt: r.buyRawAmt !== undefined ? Number(r.buyRawAmt) : (Number(r.rawAmt) || 0),
+        prodRawKg: r.prodRawKg !== undefined ? Number(r.prodRawKg) : (Number(r.rawKg) || 0),
+        extraCost: Number(r.extraCost) || 0,
+        outputs: r.outputs || {}
+      }));
+      c.salesRecords = (c.salesRecords || []).map(sr => ({
+        ...sr,
+        items: sr.items || {}
+      }));
+    });
+    return s;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        state = normalizeState(JSON.parse(raw));
+        if (!state.cycles.length) throw new Error('empty');
+      } else {
+        state = createDefaultState();
+        saveState();
+      }
+    } catch {
+      state = createDefaultState();
+      saveState();
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function getActiveCycle() {
+    return state.cycles.find(c => c.id === state.activeCycleId) || state.cycles[0];
+  }
+
+  function getSym() {
+    const map = { VND: '₫', CNY: '¥', USD: '$' };
+    return map[state.config.currency] || '₫';
+  }
+
+  function fmt(num, withSym = true) {
+    const sym = withSym ? getSym() : '';
+    const dec = state.config.currency === 'VND' ? 0 : 2;
+    return sym + (Number(num) || 0).toLocaleString('zh-CN', {
+      minimumFractionDigits: dec,
+      maximumFractionDigits: dec
+    });
+  }
+
+  function fmtRmb(mainAmt) {
+    const rate = Math.max(0.0001, Number(state.config.rmbRate) || 1);
+    const rmb = state.config.currency === 'CNY' ? mainAmt : (mainAmt / rate);
+    return '¥' + (Number(rmb) || 0).toLocaleString('zh-CN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, s => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[s]));
+  }
+
+  function getGradeById(gid) {
+    return state.grades.find(g => g.id === gid);
+  }
+
+  // 核心引擎：按【同一品类(金枕 / 干尧)】分别串联计算结转！绝不跨品类混柜结转
+  function recomputeAllCycles(autoCreateNext = false) {
+    computedCycleCache = {};
+    const cfg = state.config;
+
+    VARIETIES.forEach(varietyName => {
+      let varCycles = state.cycles.filter(c => c.variety === varietyName);
+      let carryInFromPrev = {}; // 仅在同品种柜次之间流转
+
+      for (let i = 0; i < varCycles.length; i++) {
+        const cyc = varCycles[i];
+        const carryIn = {};
+        Object.keys(carryInFromPrev).forEach(k => {
+          if (carryInFromPrev[k].cartons > 0.0001) {
+            carryIn[k] = { ...carryInFromPrev[k] };
+          }
+        });
+
+        // 1. 计算本柜原料加权采购均价
+        let buyKgAll = 0, buyAmtAll = 0, prodRawAll = 0;
+        cyc.records.forEach(r => {
+          buyKgAll += Number(r.buyRawKg) || 0;
+          buyAmtAll += Number(r.buyRawAmt) || 0;
+          prodRawAll += Number(r.prodRawKg) || 0;
+        });
+        const avgBuyPrice = buyKgAll > 0 ? buyAmtAll / buyKgAll : 0;
+
+        // 2. 汇总本柜新产各等级件数 & 本柜新产成本
+        const producedBySku = {};
+        let ownCostTotal = 0;
+        let ownTotalCartons = 0;
+
+        const sortedRecs = [...cyc.records].sort((a, b) => a.date.localeCompare(b.date));
+        sortedRecs.forEach(r => {
+          const v = cyc.variety;
+          const pk = Number(r.prodRawKg) || 0;
+          const extra = Number(r.extraCost) || 0;
+          let recCartons = 0;
+          state.grades.forEach(g => {
+            const c = Number((r.outputs && r.outputs[g.id]) || 0);
+            if (c > 0) {
+              const sk = skuKey(v, g.id);
+              producedBySku[sk] = (producedBySku[sk] || 0) + c;
+              recCartons += c;
+            }
+          });
+          const recOutKg = recCartons * CARTON_KG;
+          ownTotalCartons += recCartons;
+
+          const rawCost = pk * avgBuyPrice;
+          const laborCost = cfg.laborMode === 'raw' ? (pk * cfg.labor) : (recOutKg * cfg.labor);
+          const pkgCost = recCartons * cfg.pkgPerCarton;
+          const freezeCost = recOutKg * cfg.freezePerKg;
+          const overheadCost = recOutKg * cfg.overheadPerKg;
+          const logisticsCost = cfg.logisticsPerCycle * (recOutKg / CONTAINER_TARGET_KG);
+
+          ownCostTotal += rawCost + laborCost + pkgCost + freezeCost + overheadCost + logisticsCost + extra;
+        });
+
+        // 3. 合并同品类上柜结转 + 本柜新产，计算各等级盈亏平衡单价(/kg)
+        const v = cyc.variety;
+        const availCartons = {};
+        const unitCostPerKg = {};
+        const totalCostBySku = {};
+
+        if (breakEvenMode === 'ratio') {
+          let totalValUnits = 0;
+          state.grades.forEach(g => {
+            const sk = skuKey(v, g.id);
+            totalValUnits += ((producedBySku[sk] || 0) * CARTON_KG) * Math.max(0, g.weightRatio);
+          });
+          state.grades.forEach(g => {
+            const sk = skuKey(v, g.id);
+            const cIn = carryIn[sk] ? carryIn[sk].cartons : 0;
+            const costIn = carryIn[sk] ? carryIn[sk].cost : 0;
+            const cProd = producedBySku[sk] || 0;
+            const prodCost = totalValUnits > 0
+              ? (ownCostTotal / totalValUnits) * (cProd * CARTON_KG) * Math.max(0, g.weightRatio)
+              : 0;
+            const totC = cIn + cProd;
+            if (totC > 0 || costIn > 0) {
+              availCartons[sk] = totC;
+              totalCostBySku[sk] = costIn + prodCost;
+              unitCostPerKg[sk] = totC > 0 ? (costIn + prodCost) / (totC * CARTON_KG) : 0;
+            }
+          });
+        } else {
+          let otherRev = 0;
+          for (let gi = 1; gi < state.grades.length; gi++) {
+            const g = state.grades[gi];
+            const sk = skuKey(v, g.id);
+            otherRev += ((producedBySku[sk] || 0) * CARTON_KG) * (Number(g.refPrice) || 0);
+          }
+          const mainProdCost = Math.max(0, ownCostTotal - otherRev);
+
+          state.grades.forEach((g, gi) => {
+            const sk = skuKey(v, g.id);
+            const cIn = carryIn[sk] ? carryIn[sk].cartons : 0;
+            const costIn = carryIn[sk] ? carryIn[sk].cost : 0;
+            const cProd = producedBySku[sk] || 0;
+            const prodCost = gi === 0 ? mainProdCost : ((cProd * CARTON_KG) * (Number(g.refPrice) || 0));
+            const totC = cIn + cProd;
+            if (totC > 0 || costIn > 0) {
+              availCartons[sk] = totC;
+              totalCostBySku[sk] = costIn + prodCost;
+              unitCostPerKg[sk] = totC > 0 ? (costIn + prodCost) / (totC * CARTON_KG) : 0;
+            }
+          });
+        }
+
+        // 4. 统计本柜已出库件数
+        const shippedBySku = {};
+        let totalShippedCartons = 0;
+        (cyc.salesRecords || []).forEach(sr => {
+          Object.keys(sr.items || {}).forEach(sk => {
+            const c = Number(sr.items[sk].cartons) || 0;
+            if (c > 0) {
+              shippedBySku[sk] = (shippedBySku[sk] || 0) + c;
+              totalShippedCartons += c;
+            }
+          });
+        });
+
+        // 5. 计算余货结转至同品类下一柜
+        const allSkuKeys = Object.keys(availCartons);
+        const totalAvailCartons = allSkuKeys.reduce((s, sk) => s + (availCartons[sk] || 0), 0);
+        const remBySku = {};
+        let totalRemCartons = 0;
+        allSkuKeys.forEach(sk => {
+          const rem = Math.max(0, (availCartons[sk] || 0) - (shippedBySku[sk] || 0));
+          remBySku[sk] = rem;
+          totalRemCartons += rem;
+        });
+
+        const carryOut = {};
+        let totalCarryOutCartons = 0;
+
+        if (totalShippedCartons >= CONTAINER_TARGET_CARTONS || cyc.closed) {
+          allSkuKeys.forEach(sk => {
+            const rem = remBySku[sk] || 0;
+            if (rem > 0.0001) {
+              carryOut[sk] = { cartons: rem, cost: rem * CARTON_KG * (unitCostPerKg[sk] || 0) };
+              totalCarryOutCartons += rem;
+            }
+          });
+        } else if (totalRemCartons > CONTAINER_TARGET_CARTONS) {
+          let excessToMove = totalRemCartons - CONTAINER_TARGET_CARTONS;
+          for (let ri = sortedRecs.length - 1; ri >= 0 && excessToMove > 0.0001; ri--) {
+            const r = sortedRecs[ri];
+            let recAvail = 0;
+            const recSkuMap = {};
+            state.grades.forEach(g => {
+              const sk = skuKey(v, g.id);
+              const c = Math.min(Number((r.outputs && r.outputs[g.id]) || 0), (remBySku[sk] || 0) - (carryOut[sk] ? carryOut[sk].cartons : 0));
+              if (c > 0) {
+                recSkuMap[sk] = c;
+                recAvail += c;
+              }
+            });
+            if (recAvail <= 0) continue;
+            const ratio = Math.min(1, excessToMove / recAvail);
+            Object.keys(recSkuMap).forEach(sk => {
+              const moveC = recSkuMap[sk] * ratio;
+              if (!carryOut[sk]) carryOut[sk] = { cartons: 0, cost: 0 };
+              carryOut[sk].cartons += moveC;
+              carryOut[sk].cost += moveC * CARTON_KG * (unitCostPerKg[sk] || 0);
+              totalCarryOutCartons += moveC;
+            });
+            excessToMove -= recAvail * ratio;
+          }
+        }
+
+        // 本柜实际仍留在本柜冷库的结存（未出库且未转走）
+        const heldHereBySku = {};
+        allSkuKeys.forEach(sk => {
+          const outC = carryOut[sk] ? carryOut[sk].cartons : 0;
+          heldHereBySku[sk] = Math.max(0, (remBySku[sk] || 0) - outC);
+        });
+
+        // 若本柜是同品类最后一个柜次且有结转余货，自动新建一个同品类下一柜接收余货
+        if (autoCreateNext && totalCarryOutCartons > 0.01 && i === varCycles.length - 1) {
+          const nextNum = varCycles.length + 1;
+          const newCyc = {
+            id: 'cyc_' + Date.now() + '_' + nextNum,
+            name: `${varietyName} · 第${nextNum}柜 (自动接续)`,
+            variety: varietyName,
+            closed: false,
+            records: [],
+            salesRecords: []
+          };
+          state.cycles.push(newCyc);
+          varCycles = state.cycles.filter(c => c.variety === varietyName);
+          saveState();
+        }
+
+        computedCycleCache[cyc.id] = {
+          carryIn,
+          producedBySku,
+          availCartons,
+          shippedBySku,
+          carryOut,
+          heldHereBySku,
+          unitCostPerKg,
+          totalCostBySku,
+          totalAvailCartons,
+          totalShippedCartons,
+          totalCarryOutCartons,
+          buyKgAll,
+          buyAmtAll,
+          prodRawAll,
+          ownTotalCartons,
+          avgBuyPrice
+        };
+
+        carryInFromPrev = carryOut;
+      }
+    });
+  }
+
+  // 渲染【全厂实时总库存表】
+  function renderTotalInventory() {
+    const rawBody = $('rawInvBody');
+    const rawFoot = $('rawInvFoot');
+    const pulpBody = $('pulpInvBody');
+    const pulpFoot = $('pulpInvFoot');
+
+    rawBody.innerHTML = '';
+    pulpBody.innerHTML = '';
+
+    // 1. 原料鲜果总库存（按金枕、干尧汇总）
+    let allBuyKg = 0, allBuyAmt = 0, allProdRawKg = 0, allRawStockVal = 0;
+
+    VARIETIES.forEach(v => {
+      let vBuyKg = 0, vBuyAmt = 0, vProdKg = 0;
+      state.cycles.filter(c => c.variety === v).forEach(c => {
+        const info = computedCycleCache[c.id];
+        if (!info) return;
+        vBuyKg += info.buyKgAll;
+        vBuyAmt += info.buyAmtAll;
+        vProdKg += info.prodRawAll;
+      });
+      const vStockKg = vBuyKg - vProdKg;
+      const vAvgP = vBuyKg > 0 ? vBuyAmt / vBuyKg : 0;
+      const vStockVal = Math.max(0, vStockKg) * vAvgP;
+
+      allBuyKg += vBuyKg;
+      allBuyAmt += vBuyAmt;
+      allProdRawKg += vProdKg;
+      allRawStockVal += vStockVal;
+
+      const vPill = v === '金枕' ? 'pill-monthong' : 'pill-ri6';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="pill ${vPill}">${escHtml(v)}</span></td>
+        <td>${vBuyKg.toLocaleString()} kg<div class="hint">${(vBuyKg/1000).toFixed(2)} 吨</div></td>
+        <td>${vProdKg.toLocaleString()} kg<div class="hint">${(vProdKg/1000).toFixed(2)} 吨</div></td>
+        <td style="font-weight:700;color:${vStockKg < 0 ? 'var(--danger)' : 'var(--info)'};">${vStockKg.toLocaleString()} kg<div class="hint">${(vStockKg/1000).toFixed(2)} 吨</div></td>
+        <td>${fmt(vAvgP)}/kg</td>
+        <td><strong>${fmt(vStockVal)}</strong><div class="hint">${fmtRmb(vStockVal)}</div></td>
+      `;
+      rawBody.appendChild(tr);
+    });
+
+    const allRawStockKg = allBuyKg - allProdRawKg;
+    rawFoot.innerHTML = `
+      <tr>
+        <td>鲜果合计</td>
+        <td>${allBuyKg.toLocaleString()} kg</td>
+        <td>${allProdRawKg.toLocaleString()} kg</td>
+        <td style="color:${allRawStockKg < 0 ? 'var(--danger)' : 'var(--info)'};">${allRawStockKg.toLocaleString()} kg (${(allRawStockKg/1000).toFixed(2)}t)</td>
+        <td>-</td>
+        <td>${fmt(allRawStockVal)} (${fmtRmb(allRawStockVal)})</td>
+      </tr>
+    `;
+
+    // 2. 冻榴莲肉成品总库存（按品类：品种 × 等级汇总）
+    let allProdCtn = 0, allShipCtn = 0, allOnHandCtn = 0, allOnHandVal = 0;
+
+    VARIETIES.forEach(v => {
+      const vCycles = state.cycles.filter(c => c.variety === v);
+      state.grades.forEach(g => {
+        const sk = skuKey(v, g.id);
+        let skuProd = 0, skuShip = 0, skuHeldVal = 0;
+        const locDesc = [];
+
+        vCycles.forEach(c => {
+          const info = computedCycleCache[c.id];
+          if (!info) return;
+          skuProd += info.producedBySku[sk] || 0;
+          skuShip += info.shippedBySku[sk] || 0;
+          const held = info.heldHereBySku[sk] || 0;
+          if (held > 0.01) {
+            skuHeldVal += held * CARTON_KG * (info.unitCostPerKg[sk] || 0);
+            locDesc.push(`${escHtml(c.name.split(' ')[0])}: <strong>${held.toFixed(1)}件</strong>`);
+          }
+        });
+
+        const onHandCtn = Math.max(0, skuProd - skuShip);
+        if (skuProd <= 0 && skuShip <= 0 && onHandCtn <= 0) return;
+
+        const onHandKg = onHandCtn * CARTON_KG;
+        const avgUnitCostKg = onHandKg > 0 ? skuHeldVal / onHandKg : 0;
+
+        allProdCtn += skuProd;
+        allShipCtn += skuShip;
+        allOnHandCtn += onHandCtn;
+        allOnHandVal += skuHeldVal;
+
+        const vPill = v === '金枕' ? 'pill-monthong' : 'pill-ri6';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left;"><span class="pill ${vPill}">${escHtml(v)}</span> <strong>${escHtml(g.name)}</strong></td>
+          <td>${skuProd.toFixed(1)} 件</td>
+          <td>${skuShip.toFixed(1)} 件</td>
+          <td style="color:var(--success);font-weight:700;">${onHandCtn.toFixed(1)} 件<div class="hint">${onHandKg.toLocaleString()} kg</div></td>
+          <td style="text-align:left;font-size:0.74rem;">${locDesc.length ? locDesc.join('<br/>') : '<span class="hint">已清库</span>'}</td>
+          <td>${fmt(avgUnitCostKg)}/kg<div class="hint">${fmt(avgUnitCostKg * CARTON_KG)}/件</div></td>
+          <td><strong>${fmt(skuHeldVal)}</strong><div class="hint">${fmtRmb(skuHeldVal)}</div></td>
+        `;
+        pulpBody.appendChild(tr);
+      });
+    });
+
+    if (!pulpBody.children.length) {
+      pulpBody.innerHTML = `<tr><td colspan="7" style="color:var(--muted);padding:14px;">暂无冻榴莲肉库存数据</td></tr>`;
+    }
+
+    const allOnHandKg = allOnHandCtn * CARTON_KG;
+    $('invTotalSummaryBadge').textContent = `全厂成品结存：${allOnHandCtn.toFixed(1)} 件 (${allOnHandKg.toLocaleString()} kg)`;
+
+    pulpFoot.innerHTML = `
+      <tr>
+        <td>成品总计</td>
+        <td>${allProdCtn.toFixed(1)} 件</td>
+        <td>${allShipCtn.toFixed(1)} 件</td>
+        <td style="color:var(--success);">${allOnHandCtn.toFixed(1)} 件 (${allOnHandKg.toLocaleString()} kg)</td>
+        <td>-</td>
+        <td>-</td>
+        <td>${fmt(allOnHandVal)} (${fmtRmb(allOnHandVal)})</td>
+      </tr>
+    `;
+  }
+
+  function toggleInventoryCard() {
+    invExpanded = !invExpanded;
+    $('inventoryBodyArea').style.display = invExpanded ? 'grid' : 'none';
+    $('toggleInvBtn').textContent = invExpanded ? '收起总库存' : '展开总库存';
+  }
+
+  function renderCycleBar() {
+    const sel = $('cycleSelect');
+    sel.innerHTML = '';
+    state.cycles.forEach(c => {
+      const info = computedCycleCache[c.id];
+      const availKg = (info ? info.totalAvailCartons : 0) * CARTON_KG;
+      const tag = info && (info.totalShippedCartons >= CONTAINER_TARGET_CARTONS || c.closed) ? ' [已封柜]' : '';
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `[${c.variety}] ${c.name}${tag} (${availKg.toLocaleString()} / 27,000 kg)`;
+      if (c.id === state.activeCycleId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    const cyc = getActiveCycle();
+    const info = computedCycleCache[cyc.id];
+    const availKg = info.totalAvailCartons * CARTON_KG;
+    const pct = Math.min(100, (availKg / CONTAINER_TARGET_KG) * 100);
+    const rawStockKg = info.buyKgAll - info.prodRawAll;
+
+    $('formVarietyBadge').textContent = `当前：${cyc.variety}柜`;
+    $('beCardTitle').textContent = `📊 【${cyc.name}】盈亏平衡测算 & 同品类结转明细`;
+
+    $('cycleProgressTitle').textContent = info.totalShippedCartons >= CONTAINER_TARGET_CARTONS || cyc.closed
+      ? `✅ 本柜已封柜出库，剩余【${cyc.variety}】已自动计入同品类下一柜！`
+      : (availKg >= CONTAINER_TARGET_KG ? `🎉 本柜已满 27,000kg，超额【${cyc.variety}】已自动转入下一柜` : `【${cyc.variety}】满柜进度 (目标 27,000 kg / 1,350 件)`);
+    $('cycleProgressPct').textContent = `${((availKg / CONTAINER_TARGET_KG) * 100).toFixed(1)}%`;
+    $('cycleProgressFill').style.width = `${pct}%`;
+    $('cycleProducedText').textContent = `本柜可用总肉：${info.totalAvailCartons.toFixed(1)} 件 (${availKg.toLocaleString()} kg)`;
+    $('cycleShippedText').textContent = `已出库：${info.totalShippedCartons.toFixed(1)} 件`;
+    $('cycleRawStockText').innerHTML = `本柜鲜果余量：<strong style="color:${rawStockKg < 0 ? 'var(--danger)' : '#78350f'}">${rawStockKg.toLocaleString()} kg</strong>`;
+    $('cycleCarryOutText').innerHTML = `转入同品类下柜：<strong>${info.totalCarryOutCartons.toFixed(1)} 件</strong>`;
+  }
+
+  function switchCycle(id) {
+    state.activeCycleId = id;
+    saveState();
+    const cyc = getActiveCycle();
+    $('recVariety').value = cyc.variety;
+    cancelEditRecord();
+    cancelEditSale();
+    setQuickFilter('all', false);
+    renderAll();
+  }
+
+  // 在左侧切换品种时，自动匹配/切换到该品种最新的未封柜次
+  function onFormVarietyChange(targetVar) {
+    if ($('editingRecordId').value) return;
+    const cur = getActiveCycle();
+    if (cur.variety === targetVar) return;
+
+    const varCycles = state.cycles.filter(c => c.variety === targetVar);
+    let targetCyc = varCycles.find(c => {
+      const info = computedCycleCache[c.id];
+      return !c.closed && (!info || info.totalShippedCartons < CONTAINER_TARGET_CARTONS);
+    }) || varCycles[varCycles.length - 1];
+
+    if (!targetCyc) {
+      targetCyc = {
+        id: 'cyc_' + Date.now(),
+        name: `${targetVar} · 第1柜`,
+        variety: targetVar,
+        closed: false,
+        records: [],
+        salesRecords: []
+      };
+      state.cycles.push(targetCyc);
+    }
+    state.activeCycleId = targetCyc.id;
+    saveState();
+    setQuickFilter('all', false);
+    renderAll();
+  }
+
+  function updateNewCycleDefaultName() {
+    const v = $('newCycleVariety').value;
+    const count = state.cycles.filter(c => c.variety === v).length + 1;
+    $('newCycleName').value = `${v} · 第${count}柜`;
+  }
+
+  function openNewCycleModal() {
+    const cur = getActiveCycle();
+    $('newCycleVariety').value = cur.variety || '金枕';
+    updateNewCycleDefaultName();
+    $('newCycleModal').style.display = 'flex';
+  }
+  function closeNewCycleModal() { $('newCycleModal').style.display = 'none'; }
+  function confirmNewCycle() {
+    const variety = $('newCycleVariety').value;
+    const name = $('newCycleName').value.trim() || `${variety} · 第${state.cycles.filter(c => c.variety === variety).length + 1}柜`;
+    const newId = 'cyc_' + Date.now();
+    state.cycles.push({ id: newId, name, variety, closed: false, records: [], salesRecords: [] });
+    state.activeCycleId = newId;
+    saveState();
+    closeNewCycleModal();
+    $('recVariety').value = variety;
+    setQuickFilter('all', false);
+    renderAll();
+  }
+
+  function deleteCurrentCycle() {
+    if (state.cycles.length <= 1) {
+      alert('至少需要保留一个生产柜次！');
+      return;
+    }
+    const cyc = getActiveCycle();
+    if (!confirm(`确定要删除【${cyc.name}】及其全部记录吗？`)) return;
+    state.cycles = state.cycles.filter(c => c.id !== cyc.id);
+    state.activeCycleId = state.cycles[0].id;
+    saveState();
+    $('recVariety').value = getActiveCycle().variety;
+    setQuickFilter('all', false);
+    renderAll();
+  }
+
+  function syncConfigUI() {
+    const c = state.config;
+    $('cfgCurrency').value = c.currency;
+    $('cfgRmbRate').value = c.rmbRate;
+    $('cfgLabor').value = c.labor;
+    $('cfgLaborMode').value = c.laborMode;
+    $('cfgPkgPerCarton').value = c.pkgPerCarton;
+    $('cfgFreezePerKg').value = c.freezePerKg;
+    $('cfgOverheadPerKg').value = c.overheadPerKg;
+    $('cfgLogisticsPerCycle').value = c.logisticsPerCycle;
+
+    const sym = getSym();
+    $('cfgRateUnit').textContent = `1¥ = ?${sym}`;
+    document.querySelectorAll('[data-curr-sym]').forEach(el => el.textContent = sym);
+    document.querySelectorAll('[data-curr-unit]').forEach(el => el.textContent = `${sym} / kg`);
+    document.querySelectorAll('[data-curr-carton]').forEach(el => el.textContent = `${sym} / 20kg件`);
+    document.querySelectorAll('[data-curr-cycle]').forEach(el => el.textContent = `${sym} / 27吨柜`);
+    $('cfgLaborMode').options[0].text = `${sym}/kg成品`;
+    $('cfgLaborMode').options[1].text = `${sym}/kg投料`;
+  }
+
+  function renderGradeConfig() {
+    const tbody = $('gradeConfigBody');
+    tbody.innerHTML = '';
+    state.grades.forEach(g => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="inline-edit-input left" value="${escHtml(g.name)}" data-field="name" /></td>
+        <td><input type="number" class="inline-edit-input" value="${g.weightRatio}" min="1" step="1" data-field="weightRatio" /></td>
+        <td><input type="number" class="inline-edit-input" value="${g.refPrice}" min="0" step="any" data-field="refPrice" /></td>
+        <td><button class="btn-sm btn-danger" onclick="removeGrade('${g.id}')" ${state.grades.length <= 1 ? 'disabled' : ''}>删</button></td>
+      `;
+      tr.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', e => {
+          const f = e.target.getAttribute('data-field');
+          g[f] = (f === 'name') ? e.target.value : (parseFloat(e.target.value) || 0);
+          saveState();
+          recomputeAllCycles(false);
+          renderTotalInventory();
+          renderCycleBar();
+          renderDailyGradeInputs(true);
+          renderSaleSkuInputs(true);
+          renderDashboard();
+        });
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addGrade() {
+    state.grades.push({ id: 'g_' + Date.now(), name: `自定义等级${state.grades.length + 1}`, weightRatio: 50, refPrice: 200000 });
+    saveState();
+    renderAll();
+  }
+
+  function removeGrade(id) {
+    if (state.grades.length <= 1) return;
+    if (!confirm('删除等级将同步移除该等级历史产出统计，确认删除？')) return;
+    state.grades = state.grades.filter(g => g.id !== id);
+    saveState();
+    renderAll();
+  }
+
+  function renderDailyGradeInputs(preserve = false) {
+    const prev = {};
+    if (preserve) {
+      document.querySelectorAll('.daily-grade-inp').forEach(i => prev[i.dataset.gid] = i.value);
+    }
+    const box = $('dailyGradeInputs');
+    box.innerHTML = '';
+    state.grades.forEach(g => {
+      const val = preserve && prev[g.id] !== undefined ? prev[g.id] : '0';
+      const div = document.createElement('div');
+      div.className = 'form-group';
+      div.innerHTML = `
+        <label>${escHtml(g.name)}</label>
+        <div class="input-wrap">
+          <input type="number" class="daily-grade-inp" data-gid="${g.id}" value="${val}" min="0" step="0.5" />
+          <span class="unit">件(20kg)</span>
+        </div>
+      `;
+      div.querySelector('input').addEventListener('input', updateDailyLivePreview);
+      box.appendChild(div);
+    });
+    updateDailyLivePreview();
+  }
+
+  function updateDailyLivePreview() {
+    const buyKg = parseFloat($('recBuyKg').value) || 0;
+    const buyAmt = parseFloat($('recBuyTotalAmt').value) || 0;
+    const prodRawKg = parseFloat($('recProdRawKg').value) || 0;
+    $('recBuyTonsHint').textContent = `折合 ${(buyKg / 1000).toFixed(2)} 吨`;
+    $('recProdTonsHint').textContent = `折合 ${(prodRawKg / 1000).toFixed(2)} 吨`;
+    $('recAmountRmbHint').textContent = state.config.currency !== 'CNY' ? `折合人民币约 ${fmtRmb(buyAmt)}` : '';
+
+    let cartons = 0;
+    document.querySelectorAll('.daily-grade-inp').forEach(i => cartons += Math.max(0, parseFloat(i.value) || 0));
+    const outKg = cartons * CARTON_KG;
+    const yieldPct = prodRawKg > 0 ? (outKg / prodRawKg) * 100 : 0;
+    $('dailyLivePreview').innerHTML = `
+      <span>今日冻肉总产：<strong>${cartons.toFixed(1)} 件 (${outKg.toLocaleString()} kg)</strong></span>
+      <span>今日实出肉率：<strong>${prodRawKg > 0 ? yieldPct.toFixed(2) + '%' : '-'}</strong></span>
+    `;
+  }
+
+  $('recBuyKg').addEventListener('input', () => {
+    $('recBuyTotalAmt').value = Math.round(((parseFloat($('recBuyKg').value) || 0) * (parseFloat($('recBuyUnitPrice').value) || 0)) * 100) / 100;
+    updateDailyLivePreview();
+  });
+  $('recBuyUnitPrice').addEventListener('input', () => {
+    $('recBuyTotalAmt').value = Math.round(((parseFloat($('recBuyKg').value) || 0) * (parseFloat($('recBuyUnitPrice').value) || 0)) * 100) / 100;
+    updateDailyLivePreview();
+  });
+  $('recBuyTotalAmt').addEventListener('input', () => {
+    const kg = parseFloat($('recBuyKg').value) || 0;
+    const amt = parseFloat($('recBuyTotalAmt').value) || 0;
+    if (kg > 0) $('recBuyUnitPrice').value = Math.round((amt / kg) * 100) / 100;
+    updateDailyLivePreview();
+  });
+  $('recProdRawKg').addEventListener('input', updateDailyLivePreview);
+
+  function saveDailyRecord() {
+    const date = $('recDate').value || getTodayStr();
+    const cyc = getActiveCycle();
+    const variety = cyc.variety;
+    const buyRawKg = Math.max(0, parseFloat($('recBuyKg').value) || 0);
+    const buyRawAmt = Math.max(0, parseFloat($('recBuyTotalAmt').value) || 0);
+    const prodRawKg = Math.max(0, parseFloat($('recProdRawKg').value) || 0);
+    const extraCost = Math.max(0, parseFloat($('recExtraCost').value) || 0);
+    const note = $('recNote').value.trim();
+
+    const outputs = {};
+    let totalCartons = 0;
+    document.querySelectorAll('.daily-grade-inp').forEach(inp => {
+      const val = Math.max(0, parseFloat(inp.value) || 0);
+      outputs[inp.dataset.gid] = val;
+      totalCartons += val;
+    });
+
+    if (buyRawKg <= 0 && prodRawKg <= 0 && totalCartons <= 0) {
+      alert('请至少填写采购数量、生产投料数量或产出件数中的一项！');
+      return;
+    }
+
+    const editId = $('editingRecordId').value;
+    if (editId) {
+      const idx = cyc.records.findIndex(r => r.id === editId);
+      if (idx !== -1) cyc.records[idx] = { id: editId, date, variety, buyRawKg, buyRawAmt, prodRawKg, extraCost, note, outputs };
+      cancelEditRecord();
+    } else {
+      cyc.records.push({ id: 'rec_' + Date.now(), date, variety, buyRawKg, buyRawAmt, prodRawKg, extraCost, note, outputs });
+    }
+    cyc.records.sort((a, b) => a.date.localeCompare(b.date));
+    saveState();
+
+    document.querySelectorAll('.daily-grade-inp').forEach(inp => inp.value = '0');
+    $('recExtraCost').value = '0';
+    $('recNote').value = '';
+    recomputeAllCycles(true);
+    renderAll();
+  }
+
+  function editRecord(recId) {
+    const cyc = getActiveCycle();
+    const r = cyc.records.find(x => x.id === recId);
+    if (!r) return;
+    $('editingRecordId').value = r.id;
+    $('recDate').value = r.date;
+    $('recVariety').value = cyc.variety;
+    $('recBuyKg').value = r.buyRawKg;
+    $('recBuyTotalAmt').value = r.buyRawAmt;
+    $('recBuyUnitPrice').value = r.buyRawKg > 0 ? Math.round((r.buyRawAmt / r.buyRawKg) * 100) / 100 : 0;
+    $('recProdRawKg').value = r.prodRawKg;
+    $('recExtraCost').value = r.extraCost || 0;
+    $('recNote').value = r.note || '';
+    document.querySelectorAll('.daily-grade-inp').forEach(inp => {
+      inp.value = (r.outputs && r.outputs[inp.dataset.gid] !== undefined) ? r.outputs[inp.dataset.gid] : 0;
+    });
+    $('formTitle').textContent = `✏️ 正在修改 ${r.date} 的记录`;
+    $('saveRecordBtn').textContent = '💾 保存修改';
+    $('cancelEditBtn').style.display = 'inline-block';
+    updateDailyLivePreview();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEditRecord() {
+    $('editingRecordId').value = '';
+    $('formTitle').textContent = '✍️ 每日采购与生产流水登记';
+    $('saveRecordBtn').textContent = '✅ 保存采购与生产记录';
+    $('cancelEditBtn').style.display = 'none';
+    $('recDate').value = getTodayStr();
+  }
+
+  function deleteRecord(recId) {
+    if (!confirm('确认删除这条每日流水记录吗？')) return;
+    const cyc = getActiveCycle();
+    cyc.records = cyc.records.filter(r => r.id !== recId);
+    saveState();
+    recomputeAllCycles(false);
+    renderAll();
+  }
+
+  function getActiveSkuKeysForSale() {
+    const cyc = getActiveCycle();
+    return state.grades.map(g => skuKey(cyc.variety, g.id));
+  }
+
+  function renderSaleSkuInputs(preserve = false) {
+    const prev = {};
+    if (preserve) {
+      document.querySelectorAll('.sale-row').forEach(tr => {
+        const sk = tr.dataset.sku;
+        prev[sk] = {
+          cartons: tr.querySelector('.sale-cartons-inp').value,
+          price: tr.querySelector('.sale-price-inp').value
+        };
+      });
+    }
+
+    const cyc = getActiveCycle();
+    const info = computedCycleCache[cyc.id];
+    const keys = getActiveSkuKeysForSale();
+    const tbody = $('saleSkuInputsBody');
+    tbody.innerHTML = '';
+
+    keys.forEach(sk => {
+      const { variety, gradeId } = parseSkuKey(sk);
+      const g = getGradeById(gradeId);
+      if (!g) return;
+      const avail = info.availCartons[sk] || 0;
+      const shipped = info.shippedBySku[sk] || 0;
+      const remainCanShip = Math.max(0, avail - shipped);
+
+      const valC = preserve && prev[sk] ? prev[sk].cartons : '0';
+      const valP = preserve && prev[sk] ? prev[sk].price : (g.refPrice || 0);
+
+      const tr = document.createElement('tr');
+      tr.className = 'sale-row';
+      tr.dataset.sku = sk;
+      tr.innerHTML = `
+        <td style="text-align:left;"><strong>${escHtml(variety)}·${escHtml(g.name)}</strong></td>
+        <td class="hint">${remainCanShip.toFixed(1)} 件</td>
+        <td><input type="number" class="inline-edit-input sale-cartons-inp" value="${valC}" min="0" step="0.5" /></td>
+        <td><input type="number" class="inline-edit-input sale-price-inp" value="${valP}" min="0" step="any" /></td>
+      `;
+      tr.querySelectorAll('input').forEach(i => i.addEventListener('input', updateSaleLivePreview));
+      tbody.appendChild(tr);
+    });
+    updateSaleLivePreview();
+  }
+
+  function fillFullContainerSale() {
+    const cyc = getActiveCycle();
+    const info = computedCycleCache[cyc.id];
+    let remainingCapacity = Math.max(0, CONTAINER_TARGET_CARTONS - info.totalShippedCartons);
+    if (remainingCapacity <= 0) remainingCapacity = CONTAINER_TARGET_CARTONS;
+
+    document.querySelectorAll('.sale-row').forEach(tr => {
+      const sk = tr.dataset.sku;
+      const canShip = Math.max(0, (info.availCartons[sk] || 0) - (info.shippedBySku[sk] || 0));
+      const fill = Math.min(canShip, remainingCapacity);
+      tr.querySelector('.sale-cartons-inp').value = Math.round(fill * 100) / 100;
+      remainingCapacity -= fill;
+    });
+    $('saleCloseCycle').checked = true;
+    updateSaleLivePreview();
+  }
+
+  function updateSaleLivePreview() {
+    let totalCartons = 0, totalRev = 0;
+    document.querySelectorAll('.sale-row').forEach(tr => {
+      const c = Math.max(0, parseFloat(tr.querySelector('.sale-cartons-inp').value) || 0);
+      const p = Math.max(0, parseFloat(tr.querySelector('.sale-price-inp').value) || 0);
+      totalCartons += c;
+      totalRev += c * CARTON_KG * p;
+    });
+    $('saleLivePreview').innerHTML = `
+      <span>本次出库：<strong>${totalCartons.toFixed(1)} 件 (${(totalCartons * CARTON_KG).toLocaleString()} kg)</strong></span>
+      <span>销售总额：<strong>${fmt(totalRev)} (${fmtRmb(totalRev)})</strong></span>
+    `;
+  }
+
+  function saveSaleRecord() {
+    const date = $('saleDate').value;
+    if (!date) {
+      alert('请先录入出库日期！');
+      $('saleDate').focus();
+      return;
+    }
+    const customer = $('saleCustomer').value.trim() || '常规整柜出库';
+    const note = $('saleNote').value.trim();
+    const closeCycle = $('saleCloseCycle').checked;
+
+    const items = {};
+    let totalC = 0;
+    document.querySelectorAll('.sale-row').forEach(tr => {
+      const sk = tr.dataset.sku;
+      const cartons = Math.max(0, parseFloat(tr.querySelector('.sale-cartons-inp').value) || 0);
+      const pricePerKg = Math.max(0, parseFloat(tr.querySelector('.sale-price-inp').value) || 0);
+      if (cartons > 0) {
+        items[sk] = { cartons, pricePerKg };
+        totalC += cartons;
+      }
+    });
+
+    if (totalC <= 0) {
+      alert('请至少填写一个品类的出库件数！');
+      return;
+    }
+
+    const cyc = getActiveCycle();
+    const editId = $('editingSaleId').value;
+    if (editId) {
+      const idx = cyc.salesRecords.findIndex(s => s.id === editId);
+      if (idx !== -1) cyc.salesRecords[idx] = { id: editId, date, customer, note, items };
+      cancelEditSale();
+    } else {
+      cyc.salesRecords.push({ id: 'sale_' + Date.now(), date, customer, note, items });
+    }
+
+    cyc.salesRecords.sort((a, b) => a.date.localeCompare(b.date));
+    if (closeCycle) cyc.closed = true;
+    saveState();
+
+    $('saleCustomer').value = '';
+    $('saleNote').value = '';
+    $('saleCloseCycle').checked = false;
+    recomputeAllCycles(true);
+    renderAll();
+  }
+
+  function editSaleRecord(saleId) {
+    const cyc = getActiveCycle();
+    const sr = cyc.salesRecords.find(s => s.id === saleId);
+    if (!sr) return;
+    $('editingSaleId').value = sr.id;
+    $('saleDate').value = sr.date;
+    $('saleCustomer').value = sr.customer || '';
+    $('saleNote').value = sr.note || '';
+    $('saleCloseCycle').checked = !!cyc.closed;
+
+    document.querySelectorAll('.sale-row').forEach(tr => {
+      const sk = tr.dataset.sku;
+      if (sr.items && sr.items[sk]) {
+        tr.querySelector('.sale-cartons-inp').value = sr.items[sk].cartons;
+        tr.querySelector('.sale-price-inp').value = sr.items[sk].pricePerKg;
+      } else {
+        tr.querySelector('.sale-cartons-inp').value = 0;
+      }
+    });
+
+    $('saleFormTitle').textContent = `✏️ 修改出库单 (${sr.date})`;
+    $('saveSaleBtn').textContent = '💾 保存出库修改';
+    $('cancelSaleEditBtn').style.display = 'inline-block';
+    updateSaleLivePreview();
+  }
+
+  function cancelEditSale() {
+    $('editingSaleId').value = '';
+    $('saleFormTitle').textContent = '🚚 本柜销售出库登记（装柜出货）';
+    $('saveSaleBtn').textContent = '✅ 保存销售出库单';
+    $('cancelSaleEditBtn').style.display = 'none';
+    $('saleDate').value = getTodayStr();
+  }
+
+  function deleteSaleRecord(saleId) {
+    if (!confirm('确认删除这条销售出库记录吗？')) return;
+    const cyc = getActiveCycle();
+    cyc.salesRecords = cyc.salesRecords.filter(s => s.id !== saleId);
+    if (!cyc.salesRecords.length) cyc.closed = false;
+    saveState();
+    recomputeAllCycles(false);
+    renderAll();
+  }
+
+  function setBreakEvenMode(mode) {
+    breakEvenMode = mode;
+    $('beModeRatio').classList.toggle('active', mode === 'ratio');
+    $('beModeResidual').classList.toggle('active', mode === 'residual');
+    recomputeAllCycles(false);
+    renderAll();
+  }
+
+  function setQuickFilter(type, shouldRender = true) {
+    const cyc = getActiveCycle();
+    if (type === 'all' || !cyc.records.length) {
+      $('filterStart').value = '';
+      $('filterEnd').value = '';
+    } else {
+      const sorted = [...cyc.records].sort((a, b) => a.date.localeCompare(b.date));
+      const lastDate = sorted[sorted.length - 1].date;
+      const d = new Date(lastDate);
+      d.setDate(d.getDate() - (type - 1));
+      $('filterStart').value = d.toISOString().slice(0, 10);
+      $('filterEnd').value = lastDate;
+    }
+    if (shouldRender) renderDashboard();
+  }
+
+  function getFilteredRecords() {
+    const cyc = getActiveCycle();
+    const s = $('filterStart').value;
+    const e = $('filterEnd').value;
+    return cyc.records.filter(r => {
+      if (s && r.date < s) return false;
+      if (e && r.date > e) return false;
+      return true;
+    });
+  }
+
+  function renderDashboard() {
+    const cyc = getActiveCycle();
+    const cycInfo = computedCycleCache[cyc.id];
+    const records = getFilteredRecords();
+    const cfg = state.config;
+    const isFiltering = !!($('filterStart').value || $('filterEnd').value);
+
+    const carryInTotal = Object.values(cycInfo.carryIn).reduce((s, x) => s + x.cartons, 0);
+    let bannerHtml = '';
+    if (carryInTotal > 0.01 || cycInfo.totalCarryOutCartons > 0.01) {
+      bannerHtml = `<div class="carry-banner">
+        <span>📥 <strong>同品类上柜结转入本柜：</strong>${carryInTotal.toFixed(1)} 件 (${(carryInTotal * CARTON_KG).toLocaleString()} kg ${cyc.variety})</span>
+        <span>📤 <strong>满柜剩余自动转入同品类下一柜：</strong>${cycInfo.totalCarryOutCartons.toFixed(1)} 件 (${(cycInfo.totalCarryOutCartons * CARTON_KG).toLocaleString()} kg ${cyc.variety})</span>
+      </div>`;
+    }
+    $('carryBannerArea').innerHTML = bannerHtml;
+
+    let sumBuyKg = 0, sumBuyAmt = 0, sumProdRawKg = 0, sumConsumedRawCost = 0, sumExtraCost = 0, sumNewCartons = 0;
+    records.forEach(r => {
+      const bk = Number(r.buyRawKg) || 0;
+      const ba = Number(r.buyRawAmt) || 0;
+      const pk = Number(r.prodRawKg) || 0;
+      sumBuyKg += bk;
+      sumBuyAmt += ba;
+      sumProdRawKg += pk;
+      sumConsumedRawCost += pk * cycInfo.avgBuyPrice;
+      sumExtraCost += Number(r.extraCost) || 0;
+      state.grades.forEach(g => sumNewCartons += Number((r.outputs && r.outputs[g.id]) || 0));
+    });
+
+    const sumNewOutKg = sumNewCartons * CARTON_KG;
+    const avgBuyP = sumBuyKg > 0 ? sumBuyAmt / sumBuyKg : 0;
+    const actualYieldPct = sumProdRawKg > 0 ? (sumNewOutKg / sumProdRawKg) * 100 : 0;
+
+    const laborTotal = cfg.laborMode === 'raw' ? (sumProdRawKg * cfg.labor) : (sumNewOutKg * cfg.labor);
+    const pkgTotal = sumNewCartons * cfg.pkgPerCarton;
+    const freezeTotal = sumNewOutKg * cfg.freezePerKg;
+    const overheadTotal = sumNewOutKg * cfg.overheadPerKg;
+    const logisticsTotal = cfg.logisticsPerCycle * (sumNewOutKg / CONTAINER_TARGET_KG);
+    const periodOwnCost = sumConsumedRawCost + laborTotal + pkgTotal + freezeTotal + overheadTotal + logisticsTotal + sumExtraCost;
+
+    const totalCycleCost = Object.values(cycInfo.totalCostBySku).reduce((a, b) => a + b, 0);
+    const totalCycleKg = cycInfo.totalAvailCartons * CARTON_KG;
+    const cycAvgBE = totalCycleKg > 0 ? totalCycleCost / totalCycleKg : 0;
+
+    $('kpiBuyKg').textContent = `${sumBuyKg.toLocaleString()} kg`;
+    $('kpiBuySub').textContent = `金额 ${fmt(sumBuyAmt)} · 均价 ${fmt(avgBuyP)}/kg`;
+    $('kpiProdRawKg').textContent = `${sumProdRawKg.toLocaleString()} kg`;
+    $('kpiProdRawSub').textContent = `耗果成本 ${fmt(sumConsumedRawCost)}`;
+    $('kpiOutCartons').textContent = `${sumNewCartons.toFixed(1)} 件`;
+    $('kpiOutKg').textContent = `${sumNewOutKg.toLocaleString()} kg · 出肉率 ${actualYieldPct.toFixed(2)}%`;
+    $('kpiAvgBE').textContent = `${fmt(cycAvgBE)} / kg`;
+    $('kpiAvgBESub').textContent = `${fmtRmb(cycAvgBE)}/kg · ${fmt(cycAvgBE * CARTON_KG)}/件`;
+
+    $('periodCostSummary').innerHTML = `
+      <strong>${isFiltering ? '所选时段新产成本' : '本柜新产成本'}：${fmt(periodOwnCost)} (${fmtRmb(periodOwnCost)})</strong>
+      ＝ 耗用鲜果 ${fmt(sumConsumedRawCost)} ＋ 人工 ${fmt(laborTotal)} ＋ 包材 ${fmt(pkgTotal)} ＋ 冻库电费 ${fmt(freezeTotal)} ＋ 管理检疫 ${fmt(overheadTotal)}
+      ${logisticsTotal > 0 ? `＋ 物流摊销 ${fmt(logisticsTotal)}` : ''}
+      ${sumExtraCost > 0 ? `＋ 杂费 ${fmt(sumExtraCost)}` : ''}
+    `;
+
+    const beBody = $('breakEvenTableBody');
+    beBody.innerHTML = '';
+    const skuKeys = Object.keys(cycInfo.availCartons);
+
+    if (!skuKeys.length) {
+      beBody.innerHTML = `<tr><td colspan="8" style="color:var(--muted);padding:16px;">本柜暂无【${cyc.variety}】冻肉库存及产出，请在左侧录入每日生产记录。</td></tr>`;
+    } else {
+      skuKeys.forEach(sk => {
+        const { variety, gradeId } = parseSkuKey(sk);
+        const g = getGradeById(gradeId);
+        if (!g) return;
+        const cIn = cycInfo.carryIn[sk] ? cycInfo.carryIn[sk].cartons : 0;
+        const cProd = cycInfo.producedBySku[sk] || 0;
+        const cShip = cycInfo.shippedBySku[sk] || 0;
+        const cOutNext = cycInfo.carryOut[sk] ? cycInfo.carryOut[sk].cartons : 0;
+        const beKg = cycInfo.unitCostPerKg[sk] || 0;
+        const beCtn = beKg * CARTON_KG;
+        const vPill = variety === '金枕' ? 'pill-monthong' : 'pill-ri6';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left;"><span class="pill ${vPill}">${escHtml(variety)}</span> <strong>${escHtml(g.name)}</strong></td>
+          <td>${cIn > 0 ? `<strong style="color:var(--info)">${cIn.toFixed(1)}</strong>` : '0'}</td>
+          <td>${cProd.toFixed(1)}</td>
+          <td style="color:var(--success);font-weight:600;">${cShip.toFixed(1)}</td>
+          <td style="color:${cOutNext > 0 ? 'var(--primary-dark)' : 'var(--muted)'};font-weight:${cOutNext > 0 ? '700' : '400'};">${cOutNext.toFixed(1)}</td>
+          <td style="color:var(--primary-dark);font-weight:700;">${fmt(beKg)}</td>
+          <td style="font-weight:600;">${fmt(beCtn)}</td>
+          <td style="color:var(--success);font-weight:600;">${fmtRmb(beKg)}/kg · ${fmtRmb(beCtn)}/件</td>
+        `;
+        beBody.appendChild(tr);
+      });
+    }
+
+    $('beExplainBox').innerHTML = breakEvenMode === 'ratio'
+      ? `<strong>当前算法（同品类权重分摊）：</strong>本柜仅核算【${cyc.variety}】各等级的结转与新产成本；满 27,000 kg 后剩余的【${cyc.variety}】将只自动转入下一个【${cyc.variety}】柜次。`
+      : `<strong>当前算法（副级抵扣反算主级）：</strong>按左下方设置的副级参考市场价抵扣后，反算出【${cyc.variety}】第1等级（主肉）的保本最低售价。`;
+
+    renderSalesTable(cyc, cycInfo);
+    renderLedgerTable(records);
+  }
+
+  function renderSalesTable(cyc, cycInfo) {
+    const tbody = $('salesTableBody');
+    const tfoot = $('salesTableFoot');
+    tbody.innerHTML = '';
+
+    const sales = cyc.salesRecords || [];
+    if (!sales.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="color:var(--muted);padding:16px;">本柜暂无销售出库记录，请在左下“本柜销售出库登记”中录入出库日期及明细。</td></tr>`;
+      tfoot.innerHTML = '';
+      $('saleSummaryBadge').textContent = '已出库 0 件 · 销售额 0';
+      return;
+    }
+
+    let totCtn = 0, totRev = 0, totCost = 0;
+
+    sales.forEach(sr => {
+      let rowCtn = 0, rowRev = 0, rowCost = 0;
+      const itemDescs = [];
+      Object.keys(sr.items || {}).forEach(sk => {
+        const it = sr.items[sk];
+        const c = Number(it.cartons) || 0;
+        const p = Number(it.pricePerKg) || 0;
+        if (c > 0) {
+          const { variety, gradeId } = parseSkuKey(sk);
+          const g = getGradeById(gradeId);
+          const name = g ? `${variety}·${g.name}` : sk;
+          const unitBE = cycInfo.unitCostPerKg[sk] || 0;
+          rowCtn += c;
+          rowRev += c * CARTON_KG * p;
+          rowCost += c * CARTON_KG * unitBE;
+          itemDescs.push(`${escHtml(name)} <strong>${c}件</strong> @${fmt(p)}/kg`);
+        }
+      });
+
+      const rowProfit = rowRev - rowCost;
+      const marginPct = rowRev > 0 ? (rowProfit / rowRev) * 100 : 0;
+      totCtn += rowCtn;
+      totRev += rowRev;
+      totCost += rowCost;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${sr.date}</strong>${sr.note ? `<div class="hint">${escHtml(sr.note)}</div>` : ''}</td>
+        <td>${escHtml(sr.customer || '-')}</td>
+        <td style="text-align:left;line-height:1.45;">${itemDescs.join('<br/>')}</td>
+        <td><strong>${rowCtn.toFixed(1)} 件</strong><div class="hint">${(rowCtn * CARTON_KG).toLocaleString()} kg</div></td>
+        <td><strong>${fmt(rowRev)}</strong><div class="hint">${fmtRmb(rowRev)}</div></td>
+        <td>${fmt(rowCost)}<div class="hint">${fmtRmb(rowCost)}</div></td>
+        <td style="color:${rowProfit >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;">
+          ${fmt(rowProfit)}<div class="hint">${marginPct.toFixed(1)}% (${fmtRmb(rowProfit)})</div>
+        </td>
+        <td class="no-print" style="white-space:nowrap;">
+          <button class="btn-sm btn-info" onclick="editSaleRecord('${sr.id}')">改</button>
+          <button class="btn-sm btn-danger" onclick="deleteSaleRecord('${sr.id}')">删</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const totProfit = totRev - totCost;
+    const totMargin = totRev > 0 ? (totProfit / totRev) * 100 : 0;
+    $('saleSummaryBadge').textContent = `已出库 ${totCtn.toFixed(1)} 件 · 毛利 ${fmt(totProfit)}`;
+
+    tfoot.innerHTML = `
+      <tr>
+        <td colspan="3">本柜出库合计</td>
+        <td>${totCtn.toFixed(1)} 件 (${(totCtn * CARTON_KG).toLocaleString()} kg)</td>
+        <td>${fmt(totRev)}<div class="hint">${fmtRmb(totRev)}</div></td>
+        <td>${fmt(totCost)}</td>
+        <td style="color:${totProfit >= 0 ? 'var(--success)' : 'var(--danger)'};">${fmt(totProfit)} (${totMargin.toFixed(1)}%)</td>
+        <td class="no-print"></td>
+      </tr>
+    `;
+  }
+
+  function renderLedgerTable(records) {
+    $('ledgerCountHint').textContent = `当前显示 ${records.length} 条流水`;
+    const gradeHeaders = state.grades.map(g => `<th>${escHtml(g.name)}(件)</th>`).join('');
+    $('ledgerHead').innerHTML = `
+      <tr>
+        <th>日期</th>
+        <th>品类</th>
+        <th style="background:#eff6ff;color:#1e40af;">采购鲜果(kg)</th>
+        <th style="background:#eff6ff;color:#1e40af;">采购金额</th>
+        <th style="background:#fffbeb;color:#92400e;">生产投料(kg)</th>
+        ${gradeHeaders}
+        <th>合计产出</th>
+        <th>实出肉率</th>
+        <th class="no-print">操作</th>
+      </tr>
+    `;
+
+    const tbody = $('ledgerBody');
+    tbody.innerHTML = '';
+
+    if (!records.length) {
+      const colSpan = 8 + state.grades.length + 1;
+      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="color:var(--muted);padding:16px;">暂无采购与生产流水记录。</td></tr>`;
+      $('ledgerFoot').innerHTML = '';
+      return;
+    }
+
+    let totBuyKg = 0, totBuyAmt = 0, totProdRawKg = 0, totCartons = 0;
+    const totGradeCtn = {};
+    state.grades.forEach(g => totGradeCtn[g.id] = 0);
+
+    records.forEach(r => {
+      const bk = Number(r.buyRawKg) || 0;
+      const ba = Number(r.buyRawAmt) || 0;
+      const pk = Number(r.prodRawKg) || 0;
+      const unitP = bk > 0 ? ba / bk : 0;
+
+      let rowCartons = 0;
+      const gradeCells = state.grades.map(g => {
+        const c = Number((r.outputs && r.outputs[g.id]) || 0);
+        rowCartons += c;
+        totGradeCtn[g.id] += c;
+        return `<td>${c > 0 ? c : '<span class="hint">0</span>'}</td>`;
+      }).join('');
+
+      const rowKg = rowCartons * CARTON_KG;
+      const yieldPct = pk > 0 ? (rowKg / pk) * 100 : 0;
+
+      totBuyKg += bk; totBuyAmt += ba; totProdRawKg += pk; totCartons += rowCartons;
+
+      const vPill = r.variety === '金枕' ? 'pill-monthong' : 'pill-ri6';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.date}${r.note ? `<div class="hint">${escHtml(r.note)}</div>` : ''}</td>
+        <td><span class="pill ${vPill}">${escHtml(r.variety)}</span></td>
+        <td style="background:#f8fbff;">${bk > 0 ? bk.toLocaleString() : '<span class="hint">0</span>'}</td>
+        <td style="background:#f8fbff;">${ba > 0 ? `${fmt(ba)}<div class="hint">${fmt(unitP)}/kg</div>` : '<span class="hint">-</span>'}</td>
+        <td style="background:#fffdf7;font-weight:600;">${pk > 0 ? pk.toLocaleString() : '<span class="hint">0</span>'}</td>
+        ${gradeCells}
+        <td><strong>${rowCartons.toFixed(1)} 件</strong><div class="hint">${rowKg.toLocaleString()} kg</div></td>
+        <td>${pk > 0 ? yieldPct.toFixed(2) + '%' : '-'}</td>
+        <td class="no-print" style="white-space:nowrap;">
+          <button class="btn-sm btn-info" onclick="editRecord('${r.id}')">改</button>
+          <button class="btn-sm btn-danger" onclick="deleteRecord('${r.id}')">删</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const totKg = totCartons * CARTON_KG;
+    const avgP = totBuyKg > 0 ? totBuyAmt / totBuyKg : 0;
+    const totYield = totProdRawKg > 0 ? (totKg / totProdRawKg) * 100 : 0;
+    const gradeTotCells = state.grades.map(g => `<td>${totGradeCtn[g.id].toFixed(1)}</td>`).join('');
+
+    $('ledgerFoot').innerHTML = `
+      <tr>
+        <td colspan="2">时段合计</td>
+        <td>${totBuyKg.toLocaleString()} kg</td>
+        <td>${fmt(totBuyAmt)}<div class="hint">均价 ${fmt(avgP)}/kg</div></td>
+        <td>${totProdRawKg.toLocaleString()} kg</td>
+        ${gradeTotCells}
+        <td>${totCartons.toFixed(1)} 件 (${totKg.toLocaleString()} kg)</td>
+        <td>${totProdRawKg > 0 ? totYield.toFixed(2) + '%' : '-'}</td>
+        <td class="no-print"></td>
+      </tr>
+    `;
+  }
+
+  // 导出全厂总库存 CSV
+  function exportInventoryCSV() {
+    const rows = [['类型', '品类', '累计入库/生产', '累计投料/出库', '当前结存件数(20kg/件)', '当前结存重量(kg)', `结存货值(${state.config.currency})`, '折合人民币']];
+    VARIETIES.forEach(v => {
+      let vBuy = 0, vAmt = 0, vProd = 0;
+      state.cycles.filter(c => c.variety === v).forEach(c => {
+        const info = computedCycleCache[c.id];
+        if (!info) return;
+        vBuy += info.buyKgAll; vAmt += info.buyAmtAll; vProd += info.prodRawAll;
+      });
+      const stock = vBuy - vProd;
+      const val = Math.max(0, stock) * (vBuy > 0 ? vAmt / vBuy : 0);
+      rows.push(['鲜果原料', v, vBuy, vProd, '-', stock, val.toFixed(2), fmtRmb(val)]);
+    });
+    VARIETIES.forEach(v => {
+      const vCycles = state.cycles.filter(c => c.variety === v);
+      state.grades.forEach(g => {
+        const sk = skuKey(v, g.id);
+        let p = 0, s = 0, val = 0;
+        vCycles.forEach(c => {
+          const info = computedCycleCache[c.id];
+          if (!info) return;
+          p += info.producedBySku[sk] || 0;
+          s += info.shippedBySku[sk] || 0;
+          const held = info.heldHereBySku[sk] || 0;
+          val += held * CARTON_KG * (info.unitCostPerKg[sk] || 0);
+        });
+        if (p <= 0 && s <= 0) return;
+        const onHandCtn = Math.max(0, p - s);
+        rows.push(['冻肉成品', `${v}·${g.name}`, `${p}件`, `${s}件`, onHandCtn.toFixed(1), (onHandCtn * CARTON_KG).toFixed(1), val.toFixed(2), fmtRmb(val)]);
+      });
+    });
+    downloadCSV(rows, `全厂实时总库存表_${getTodayStr()}.csv`);
+  }
+
+  function exportProductionCSV() {
+    const cyc = getActiveCycle();
+    const records = getFilteredRecords();
+    const gradeCols = state.grades.map(g => `${g.name}(件/20kg)`);
+    const headers = [
+      '日期', '柜次', '品类', '采购鲜果(kg)', `采购金额(${state.config.currency})`,
+      '生产投料原料(kg)', '额外杂费', ...gradeCols, '合计件数(20kg)', '合计冻肉重(kg)', '生产实出肉率(%)', '备注'
+    ];
+    const rows = [headers];
+    records.forEach(r => {
+      let rowCtn = 0;
+      const gVals = state.grades.map(g => {
+        const v = Number((r.outputs && r.outputs[g.id]) || 0);
+        rowCtn += v;
+        return v;
+      });
+      const rowKg = rowCtn * CARTON_KG;
+      const y = r.prodRawKg > 0 ? ((rowKg / r.prodRawKg) * 100).toFixed(2) : '0';
+      rows.push([
+        r.date, cyc.name, r.variety, r.buyRawKg, r.buyRawAmt,
+        r.prodRawKg, r.extraCost || 0, ...gVals, rowCtn, rowKg, y, `"${(r.note || '').replace(/"/g, '""')}"`
+      ]);
+    });
+    downloadCSV(rows, `${cyc.name}_采购生产台账_${getTodayStr()}.csv`);
+  }
+
+  function exportSalesCSV() {
+    const cyc = getActiveCycle();
+    const cycInfo = computedCycleCache[cyc.id];
+    const headers = ['出库日期', '柜次', '客户/货柜', '品类(品种·等级)', '出库件数(20kg/件)', '出库净重(kg)', `销售单价(${state.config.currency}/kg)`, '销售金额', '对应保本成本', '毛利', '备注'];
+    const rows = [headers];
+
+    (cyc.salesRecords || []).forEach(sr => {
+      Object.keys(sr.items || {}).forEach(sk => {
+        const it = sr.items[sk];
+        const c = Number(it.cartons) || 0;
+        const p = Number(it.pricePerKg) || 0;
+        if (c <= 0) return;
+        const { variety, gradeId } = parseSkuKey(sk);
+        const g = getGradeById(gradeId);
+        const skuName = g ? `${variety}·${g.name}` : sk;
+        const kg = c * CARTON_KG;
+        const rev = kg * p;
+        const cost = kg * (cycInfo.unitCostPerKg[sk] || 0);
+        rows.push([
+          sr.date, cyc.name, `"${(sr.customer || '').replace(/"/g, '""')}"`,
+          skuName, c, kg, p, rev.toFixed(2), cost.toFixed(2), (rev - cost).toFixed(2),
+          `"${(sr.note || '').replace(/"/g, '""')}"`
+        ]);
+      });
+    });
+    downloadCSV(rows, `${cyc.name}_销售出库表_${getTodayStr()}.csv`);
+  }
+
+  function downloadCSV(rows, filename) {
+    const csvContent = '\uFEFF' + rows.map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportBackupJSON() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `越南榴莲工厂全流程备份_${getTodayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function triggerImportJSON() { $('importJsonInput').click(); }
+  $('importJsonInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.cycles || !parsed.grades) throw new Error('无效');
+        state = normalizeState(parsed);
+        saveState();
+        renderAll();
+        alert('备份数据恢复成功！');
+      } catch {
+        alert('备份文件格式不正确，无法导入。');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  function clearToBlank() {
+    if (!confirm('确认清空当前示例数据，分别创建空白的“金枕 · 第1柜”和“干尧 · 第1柜”开始真实记账吗？')) return;
+    const t = Date.now();
+    state.cycles = [
+      { id: 'cyc_m_' + t, name: '金枕 · 第1柜', variety: '金枕', closed: false, records: [], salesRecords: [] },
+      { id: 'cyc_r_' + (t + 1), name: '干尧 · 第1柜', variety: '干尧', closed: false, records: [], salesRecords: [] }
+    ];
+    state.activeCycleId = state.cycles[0].id;
+    saveState();
+    $('recVariety').value = '金枕';
+    setQuickFilter('all', false);
+    renderAll();
+  }
+
+  const cfgBindings = [
+    ['cfgCurrency', 'currency', false],
+    ['cfgRmbRate', 'rmbRate', true],
+    ['cfgLabor', 'labor', true],
+    ['cfgLaborMode', 'laborMode', false],
+    ['cfgPkgPerCarton', 'pkgPerCarton', true],
+    ['cfgFreezePerKg', 'freezePerKg', true],
+    ['cfgOverheadPerKg', 'overheadPerKg', true],
+    ['cfgLogisticsPerCycle', 'logisticsPerCycle', true]
+  ];
+  cfgBindings.forEach(([elId, key, isNum]) => {
+    const evt = $(elId).tagName === 'SELECT' ? 'change' : 'input';
+    $(elId).addEventListener(evt, () => {
+      state.config[key] = isNum ? (parseFloat($(elId).value) || 0) : $(elId).value;
+      saveState();
+      syncConfigUI();
+      updateDailyLivePreview();
+      recomputeAllCycles(false);
+      renderTotalInventory();
+      renderCycleBar();
+      renderDashboard();
+    });
+  });
+
+  function renderAll() {
+    recomputeAllCycles(false);
+    syncConfigUI();
+    renderTotalInventory();
+    renderCycleBar();
+    renderGradeConfig();
+    renderDailyGradeInputs(false);
+    renderSaleSkuInputs(false);
+    renderDashboard();
+  }
+
+  loadState();
+  $('recDate').value = getTodayStr();
+  $('saleDate').value = getTodayStr();
+  $('recVariety').value = getActiveCycle().variety || '金枕';
+  renderAll();
+</script>
+</body>
+</html>
